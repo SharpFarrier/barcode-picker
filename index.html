@@ -870,7 +870,7 @@ function clearQueue(){if(!queue.length)return;queue=[];renderQueueScreen();updat
 
 function exportCSV(){
   if(!queue.length){showToast('Queue is empty');return;}
-  const rows=['Master SKU,Quantity'];
+  const rows=['sku,qty'];
   queue.forEach(q=>rows.push(`"${q.sku}",${q.qty}`));
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const url=URL.createObjectURL(blob);
