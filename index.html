@@ -55,7 +55,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .bottom-nav{
   position:fixed;bottom:0;left:0;right:0;height:60px;
   background:var(--surface);border-top:1px solid var(--border);
-  display:grid;grid-template-columns:1fr 1fr;
+  display:grid;grid-template-columns:1fr 1fr 1fr;
 }
 .nav-tab{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -238,6 +238,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .prog-dot{height:3px;flex:1;border-radius:2px;background:var(--border2);transition:background 0.2s}
 .prog-dot.done{background:var(--accent)}
 
+/* ── MASTER SCREEN ── */
+.master-search-wrap{position:sticky;top:0;background:var(--bg);padding-bottom:10px;z-index:10}
+.master-search{
+  width:100%;height:42px;border:1px solid var(--border2);border-radius:var(--radius);
+  padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;
+  background:var(--surface);color:var(--text);outline:none;
+}
+.master-search:focus{border-color:var(--accent)}
+.master-filter-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.mf-chip{
+  padding:5px 12px;border:1px solid var(--border2);border-radius:20px;
+  font-size:12px;cursor:pointer;background:var(--surface);color:var(--text2);
+}
+.mf-chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.master-count{font-size:11px;color:var(--text3);margin-bottom:10px;font-family:'DM Mono',monospace}
+.master-group{margin-bottom:20px}
+.master-group-label{
+  font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:8px;padding-bottom:6px;
+  border-bottom:1px solid var(--border);
+}
+.master-row{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:border-color 0.12s;
+}
+.master-row:active{border-color:var(--accent)}
+.master-row-left{flex:1;min-width:0}
+.master-sku{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent)}
+.master-attrs{font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.master-add{
+  flex-shrink:0;width:32px;height:32px;border-radius:8px;
+  background:var(--accent-bg);border:1px solid var(--accent-border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:var(--accent);font-weight:300;
+}
+
 /* Scrollbar */
 .main::-webkit-scrollbar{width:3px}
 .main::-webkit-scrollbar-track{background:transparent}
@@ -286,6 +324,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div id="queue-list"></div>
   </div>
 
+  <!-- SCREEN: Product Master -->
+  <div class="screen" id="scr-master">
+    <div class="master-search-wrap">
+      <input class="master-search" id="master-search" type="search" placeholder="Search SKU, product, size…" oninput="renderMaster()">
+    </div>
+    <div class="master-filter-row" id="master-filters"></div>
+    <div class="master-count" id="master-count"></div>
+    <div id="master-list"></div>
+  </div>
+
 </div>
 
 <!-- Bottom Nav -->
@@ -297,6 +345,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="nav-tab" id="nav-queue" onclick="switchTab('queue')">
     <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
     Queue
+  </div>
+  <div class="nav-tab" id="nav-master" onclick="switchTab('master')">
+    <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    Master
   </div>
 </div>
 
@@ -501,8 +553,8 @@ const SKUS=[
   {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Velvet",sku:"L1-B-VV-RF-3",desc:"Aura Single Layer-Velvet-3x6"},
   {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Blue",sku:"L1-B-BS-RF-3",desc:"Aura Single Layer-Blue-3x6"},
   {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-B-BR-GD-3",desc:"Aura Single Layer-Brown-3x6"},
-  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-RF-3",desc:"Atlas Ortho Tri-Black-3x6"},
-  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-RF-2",desc:"Atlas Ortho Tri-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:"Black",sku:"L3-B-BL-RF-3",desc:"Atlas Ortho Tri-Black-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:"Black",sku:"L3-B-BL-RF-2",desc:"Atlas Ortho Tri-Black-Black-2.5x6"},
   {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-W-BR-AT-3",desc:"Atlas Ortho Tri-Brown-White-3x6"},
   {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-W-BR-AT-2",desc:"Atlas Ortho Tri-Brown-White-2.5x6"},
   {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-B-BR-AT-3",desc:"Atlas Ortho Tri-Brown-Black-3x6"},
@@ -836,12 +888,17 @@ function switchTab(tab){
   currentTab=tab;
   document.getElementById('nav-picker').classList.toggle('active',tab==='picker');
   document.getElementById('nav-queue').classList.toggle('active',tab==='queue');
+  document.getElementById('nav-master').classList.toggle('active',tab==='master');
   if(tab==='picker'){
     if(sel.product) showScreen('scr-picker');
     else showScreen('scr-product');
-  } else {
+  } else if(tab==='queue'){
     renderQueueScreen();
     showScreen('scr-queue');
+  } else {
+    initMasterFilters();
+    renderMaster();
+    showScreen('scr-master');
   }
 }
 
@@ -871,8 +928,81 @@ function showToast(msg){
   clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2000);
 }
 
+// ── MASTER ────────────────────────────────────────────────────────────────────
+let masterFilter = null;
+
+function initMasterFilters(){
+  const products = unique(SKUS.map(s=>s.product)).sort();
+  const row = document.getElementById('master-filters');
+  row.innerHTML = products.map(p=>
+    `<div class="mf-chip${masterFilter===p?' on':''}" onclick="toggleMasterFilter('${p}')">${p}</div>`
+  ).join('');
+}
+
+function toggleMasterFilter(p){
+  masterFilter = masterFilter===p ? null : p;
+  initMasterFilters();
+  renderMaster();
+}
+
+function renderMaster(){
+  const q = (document.getElementById('master-search').value||'').toLowerCase().trim();
+  let filtered = SKUS.filter(s=>{
+    if(masterFilter && s.product !== masterFilter) return false;
+    if(!q) return true;
+    return s.sku.toLowerCase().includes(q) ||
+           s.product.toLowerCase().includes(q) ||
+           (s.size||'').toLowerCase().includes(q) ||
+           (s.fcolor||'').toLowerCase().includes(q) ||
+           (s.mattress||'').toLowerCase().includes(q) ||
+           (s.wood||'').toLowerCase().includes(q) ||
+           (s.clothcolor||'').toLowerCase().includes(q) ||
+           s.desc.toLowerCase().includes(q);
+  });
+
+  document.getElementById('master-count').textContent =
+    `${filtered.length} SKU${filtered.length!==1?'s':''} ${masterFilter?'· '+masterFilter:'· all products'}`;
+
+  // Group by product
+  const groups = {};
+  filtered.forEach(s=>{
+    if(!groups[s.product]) groups[s.product]=[];
+    groups[s.product].push(s);
+  });
+
+  const list = document.getElementById('master-list');
+  if(filtered.length===0){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div>No SKUs match your search.</div>`;
+    return;
+  }
+
+  list.innerHTML = Object.entries(groups).map(([prod, skus])=>`
+    <div class="master-group">
+      <div class="master-group-label">${prod} <span style="font-weight:400;color:var(--text3)">(${skus.length})</span></div>
+      ${skus.map(s=>{
+        const attrs=[s.size,s.fcolor,s.wood,s.mattress,s.clothcolor].filter(Boolean).join(' · ');
+        return `<div class="master-row" onclick="masterAddToQueue('${s.sku}','${s.desc.replace(/'/g,"\\'")}','${s.product}')">
+          <div class="master-row-left">
+            <div class="master-sku">${s.sku}</div>
+            <div class="master-attrs">${attrs}</div>
+          </div>
+          <div class="master-add">+</div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function masterAddToQueue(sku, desc, product){
+  const existing = queue.find(q=>q.sku===sku);
+  if(existing){ existing.qty+=1; showToast(`+1 → ${sku}`); }
+  else{ queue.push({sku,desc,qty:1,product}); showToast(`Added ${sku}`); }
+  updateBadge();
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 buildProductGrid();
+initMasterFilters();
+renderMaster();
 </script>
 </body>
 </html>
