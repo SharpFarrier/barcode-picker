@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BarcodeLens</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f0e0c;
+  --surface:#1a1916;
+  --surface2:#242220;
+  --surface3:#2e2c29;
+  --border:#333230;
+  --border2:#4a4845;
+  --accent:#e8883a;
+  --accent2:#c96e24;
+  --accent-bg:rgba(232,136,58,0.12);
+  --accent-border:rgba(232,136,58,0.3);
+  --text:#f0ede8;
+  --text2:#a09d98;
+  --text3:#5c5a57;
+  --green:#4caf82;
+  --green-bg:rgba(76,175,130,0.12);
+  --red:#e05a5a;
+  --red-bg:rgba(224,90,90,0.1);
+  --radius:10px;
+  --radius-lg:14px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:15px;overflow:hidden}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:56px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;position:fixed;top:0;left:0;right:0;z-index:100;
+}
+.brand{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;letter-spacing:0.06em;color:var(--text)}
+.brand em{color:var(--accent);font-style:normal}
+.queue-badge{
+  background:var(--accent-bg);border:1px solid var(--accent-border);
+  border-radius:20px;padding:4px 12px;
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);
+}
+
+/* ── MAIN AREA ── */
+.main{position:fixed;top:56px;left:0;right:0;bottom:60px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.screen{display:none;padding:16px;min-height:100%}
+.screen.active{display:block}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;height:60px;
+  background:var(--surface);border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;
+}
+.nav-tab{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer;transition:all 0.15s;
+  font-size:11px;color:var(--text3);font-weight:500;
+}
+.nav-tab svg{width:22px;height:22px;stroke:var(--text3);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:all .15s}
+.nav-tab.active{color:var(--accent)}
+.nav-tab.active svg{stroke:var(--accent)}
+
+/* ── SECTION LABEL ── */
+.sec-label{
+  font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:10px;
+}
+
+/* ── PRODUCT GRID ── */
+.product-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.product-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;
+  transition:all 0.15s;active:scale(0.97);
+}
+.product-card:active{transform:scale(0.97)}
+.product-card.selected{border-color:var(--accent);background:var(--surface2)}
+.prod-img{
+  width:100%;aspect-ratio:4/3;object-fit:cover;display:block;
+  background:var(--surface2);
+}
+.prod-img-placeholder{
+  width:100%;aspect-ratio:4/3;
+  background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+}
+.prod-label{padding:10px 12px}
+.prod-name{font-size:13px;font-weight:600;color:var(--text)}
+.prod-sub{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* ── STEP HEADER ── */
+.step-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.back-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  flex-shrink:0;
+}
+.back-btn svg{width:18px;height:18px;stroke:var(--text2);fill:none;stroke-width:2;stroke-linecap:round}
+.step-info{flex:1}
+.step-product{font-size:16px;font-weight:600}
+.step-crumb{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:0.02em}
+
+/* ── CHIP GRID ── */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.chip{
+  padding:8px 16px;border:1px solid var(--border2);
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;
+  background:var(--surface);color:var(--text2);transition:all 0.12s;
+  font-family:'DM Sans',sans-serif;
+}
+.chip:active{transform:scale(0.97)}
+.chip.sel{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+/* ── IMAGE PICKER ── */
+.img-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.img-option{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;
+  transition:all 0.12s;
+}
+.img-option:active{transform:scale(0.97)}
+.img-option.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.opt-img{
+  width:100%;aspect-ratio:4/3;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  object-fit:cover;
+}
+.opt-img img{width:100%;height:100%;object-fit:cover;display:block}
+.opt-label{padding:8px 10px;font-size:12px;font-weight:500;color:var(--text2);text-align:center}
+.img-option.sel .opt-label{color:var(--accent)}
+
+/* ── SKU RESULT ── */
+.sku-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:16px;margin-top:8px;
+}
+.sku-card.found{border-color:var(--accent-border);background:var(--accent-bg)}
+.sku-card.notfound{border-color:rgba(224,90,90,0.3);background:var(--red-bg)}
+.sku-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
+.sku-lbl.found{color:var(--accent)}
+.sku-lbl.notfound{color:var(--red)}
+.sku-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;color:var(--text);word-break:break-all}
+.sku-desc{font-size:12px;color:var(--text2);margin-top:4px}
+
+/* ── QTY ROW ── */
+.qty-row{display:flex;gap:10px;margin-top:14px;align-items:center}
+.qty-wrap{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;overflow:hidden}
+.qty-btn{
+  width:42px;height:46px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--accent);cursor:pointer;background:transparent;border:none;
+  font-family:'DM Mono',monospace;
+}
+.qty-num{
+  width:48px;text-align:center;font-family:'DM Mono',monospace;font-size:16px;font-weight:500;
+  color:var(--text);background:transparent;border:none;outline:none;
+}
+.add-btn{
+  flex:1;height:46px;background:var(--accent);border:none;border-radius:10px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:#fff;
+  cursor:pointer;letter-spacing:0.02em;transition:all 0.1s;
+}
+.add-btn:active{transform:scale(0.98);background:var(--accent2)}
+
+/* ── QUEUE SCREEN ── */
+.queue-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.queue-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 10px;text-align:center;
+}
+.stat-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--text)}
+.stat-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.06em}
+
+.export-btn{
+  width:100%;height:48px;background:var(--accent);border:none;border-radius:var(--radius);
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:#fff;cursor:pointer;
+  margin-bottom:16px;transition:all 0.1s;
+}
+.export-btn:active{transform:scale(0.99);background:var(--accent2)}
+.clear-btn{
+  width:100%;height:40px;background:transparent;border:1px solid var(--border2);
+  border-radius:var(--radius);font-family:'DM Sans',sans-serif;
+  font-size:13px;color:var(--text3);cursor:pointer;margin-bottom:20px;
+}
+
+.empty-state{
+  padding:48px 24px;text-align:center;color:var(--text3);
+  font-size:13px;line-height:2;
+}
+.empty-icon{font-size:36px;margin-bottom:8px;opacity:0.4}
+
+/* ── QUEUE ITEMS ── */
+.q-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:14px;margin-bottom:10px;
+}
+.q-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.q-sku{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent)}
+.q-desc{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.4}
+.q-del{
+  width:30px;height:30px;flex-shrink:0;
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:14px;color:var(--text3);
+}
+.q-del:active{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.q-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.q-product-tag{
+  font-size:10px;padding:3px 8px;border-radius:4px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--text3);
+  font-family:'DM Mono',monospace;
+}
+.q-qty-wrap{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.q-qty-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--accent);cursor:pointer;background:transparent;border:none}
+.q-qty-num{width:38px;text-align:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(8px);
+  background:var(--surface3);border:1px solid var(--border2);
+  border-radius:20px;padding:8px 20px;font-size:13px;color:var(--text);
+  opacity:0;transition:all 0.2s;pointer-events:none;white-space:nowrap;z-index:200;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── PICKER PROGRESS ── */
+.progress-bar{display:flex;gap:4px;margin-bottom:20px}
+.prog-dot{height:3px;flex:1;border-radius:2px;background:var(--border2);transition:background 0.2s}
+.prog-dot.done{background:var(--accent)}
+
+/* Scrollbar */
+.main::-webkit-scrollbar{width:3px}
+.main::-webkit-scrollbar-track{background:transparent}
+.main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">BARCODE<em>LENS</em></div>
+  <div class="queue-badge" id="hdr-badge">0 queued</div>
+</div>
+
+<div class="main">
+
+  <!-- SCREEN: Product Selection -->
+  <div class="screen active" id="scr-product">
+    <div class="sec-label">Select Product</div>
+    <div class="product-grid" id="product-grid"></div>
+  </div>
+
+  <!-- SCREEN: Picker steps -->
+  <div class="screen" id="scr-picker">
+    <div class="step-header">
+      <div class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <div class="step-info">
+        <div class="step-product" id="step-product-name">Nova</div>
+        <div class="step-crumb" id="step-crumb">—</div>
+      </div>
+    </div>
+    <div class="progress-bar" id="progress-bar"></div>
+    <div id="picker-content"></div>
+  </div>
+
+  <!-- SCREEN: Queue -->
+  <div class="screen" id="scr-queue">
+    <div class="queue-stats">
+      <div class="stat-card"><div class="stat-val" id="s-skus">0</div><div class="stat-lbl">SKUs</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-pcs">0</div><div class="stat-lbl">Pieces</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-prods">0</div><div class="stat-lbl">Products</div></div>
+    </div>
+    <button class="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+    <button class="clear-btn" onclick="clearQueue()">Clear All</button>
+    <div id="queue-list"></div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-tab active" id="nav-picker" onclick="switchTab('picker')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Picker
+  </div>
+  <div class="nav-tab" id="nav-queue" onclick="switchTab('queue')">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Queue
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PRODUCT IMAGES (inline SVGs as data URLs for zero-dependency) ──────────
+// Each product gets a distinctive SVG illustration
+const PROD_SVGS = {
+  // Beds — foldable style
+  default_bed: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="10" y="55" width="100" height="8" rx="2" fill="#e8883a" opacity="0.8"/>
+    <rect x="10" y="40" width="100" height="16" rx="2" fill="#333" stroke="#4a4845" stroke-width="1"/>
+    <rect x="10" y="38" width="100" height="5" rx="1" fill="#4a4845"/>
+    <rect x="10" y="62" width="6" height="20" rx="1" fill="#4a4845"/>
+    <rect x="104" y="62" width="6" height="20" rx="1" fill="#4a4845"/>
+    <rect x="15" y="63" width="90" height="3" rx="1" fill="#333"/>
+  </svg>`,
+  atlas_aura: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="8" y="50" width="104" height="10" rx="2" fill="#e8883a" opacity="0.7"/>
+    <rect x="8" y="38" width="104" height="13" rx="2" fill="#2e2c29" stroke="#4a4845" stroke-width="1"/>
+    <rect x="8" y="60" width="6" height="22" rx="1" fill="#4a4845"/>
+    <rect x="106" y="60" width="6" height="22" rx="1" fill="#4a4845"/>
+    <rect x="58" y="60" width="4" height="22" rx="1" fill="#3a3835"/>
+    <rect x="14" y="61" width="88" height="3" rx="1" fill="#2e2c29"/>
+  </svg>`,
+  metal_frame: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="8" y="30" width="104" height="45" rx="3" fill="none" stroke="#e8883a" stroke-width="2" opacity="0.6"/>
+    <line x1="8" y1="50" x2="112" y2="50" stroke="#4a4845" stroke-width="1.5"/>
+    <rect x="8" y="72" width="6" height="15" rx="1" fill="#4a4845"/>
+    <rect x="106" y="72" width="6" height="15" rx="1" fill="#4a4845"/>
+    <rect x="57" y="72" width="6" height="15" rx="1" fill="#3a3835"/>
+  </svg>`,
+  rollaway: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="10" y="45" width="100" height="28" rx="3" fill="#2e2c29" stroke="#4a4845" stroke-width="1"/>
+    <rect x="10" y="45" width="100" height="8" rx="2" fill="#e8883a" opacity="0.6"/>
+    <circle cx="20" cy="79" r="5" fill="#333" stroke="#4a4845" stroke-width="1.5"/>
+    <circle cx="100" cy="79" r="5" fill="#333" stroke="#4a4845" stroke-width="1.5"/>
+    <rect x="55" y="79" r="5" width="10" height="8" rx="1" fill="#3a3835"/>
+  </svg>`,
+  table: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="5" y="38" width="110" height="8" rx="2" fill="#e8883a" opacity="0.7"/>
+    <rect x="5" y="46" width="110" height="22" rx="2" fill="#2e2c29" stroke="#4a4845" stroke-width="1"/>
+    <rect x="15" y="68" width="5" height="18" rx="1" fill="#4a4845"/>
+    <rect x="100" y="68" width="5" height="18" rx="1" fill="#4a4845"/>
+    <rect x="22" y="48" width="76" height="18" rx="1" fill="#1a1916" opacity="0.5"/>
+    <rect x="22" y="48" width="20" height="5" rx="1" fill="#333"/>
+  </svg>`,
+  chair: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" width="120" height="90">
+    <rect width="120" height="90" fill="#242220"/>
+    <rect x="25" y="20" width="70" height="35" rx="4" fill="#2e2c29" stroke="#4a4845" stroke-width="1.5"/>
+    <rect x="25" y="20" width="70" height="8" rx="2" fill="#e8883a" opacity="0.5"/>
+    <rect x="25" y="55" width="70" height="10" rx="2" fill="#333" stroke="#4a4845" stroke-width="1"/>
+    <rect x="30" y="65" width="8" height="22" rx="1" fill="#4a4845"/>
+    <rect x="82" y="65" width="8" height="22" rx="1" fill="#4a4845"/>
+  </svg>`,
+};
+
+// Base image URL — GitHub Pages repo
+const IMG_BASE = 'https://sharpfarrier.github.io/barcode-picker/images/';
+
+// Product catalogue with real image paths + SVG fallbacks
+const PRODUCTS_META = {
+  "Atlas":     {img:"atlas.jpg",     svg:"atlas_aura",   sub:"Foldable · 2.5ft–3ft"},
+  "Avon":      {img:"avon.jpg",      svg:"metal_frame",  sub:"Metal · 2.5ft–3ft"},
+  "Aura":      {img:"aura.jpg",      svg:"atlas_aura",   sub:"Foldable · 3ft"},
+  "Base":      {img:"base.jpg",      svg:"metal_frame",  sub:"Metal · 4ft–5ft"},
+  "Boston":    {img:"boston.jpg",    svg:"metal_frame",  sub:"Metal · 4ft–6ft"},
+  "Duke":      {img:"duke.jpg",      svg:"table",        sub:"Study Table · 4ft"},
+  "Elvo":      {img:"elvo.jpg",      svg:"metal_frame",  sub:"Wooden HB · 5ft"},
+  "Eva":       {img:"eva.jpg",       svg:"chair",        sub:"Study Chair"},
+  "Jasper":    {img:"jasper.jpg",    svg:"default_bed",  sub:"Headboard · 3ft"},
+  "Lizon":     {img:"lizon.jpg",     svg:"table",        sub:"Study Table · 4ft"},
+  "Linea Grey":{img:"linea-grey.jpg",svg:"metal_frame",  sub:"Metal · 5ft"},
+  "Luvo":      {img:"luvo.jpg",      svg:"metal_frame",  sub:"Wooden HB · 5ft"},
+  "Nexon":     {img:"nexon.jpg",     svg:"rollaway",     sub:"Foldable · 2.5ft–3ft"},
+  "Nesto":     {img:"nesto.jpg",     svg:"metal_frame",  sub:"Metal · 4ft–5ft"},
+  "Nova":      {img:"nova.jpg",      svg:"default_bed",  sub:"Foldable · 2.5ft–6ft"},
+  "Oslo":      {img:"oslo.jpg",      svg:"metal_frame",  sub:"Metal · 4ft–5ft"},
+  "Rollease":  {img:"rollease.jpg",  svg:"rollaway",     sub:"Rollaway · 3ft"},
+  "Samos":     {img:"samos.jpg",     svg:"metal_frame",  sub:"Headboard · 4ft–6ft"},
+  "Spacio":    {img:"spacio.jpg",    svg:"default_bed",  sub:"5-Layer"},
+  "Xyra":      {img:"xyra.jpg",      svg:"rollaway",     sub:"Rollaway · 3ft"},
+};
+
+// ── SKU DATABASE ─────────────────────────────────────────────────────────────
+const SKUS=[
+  {product:"Xyra",size:"3x6",fcolor:"Brown",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BR-TR-3",desc:"Xyra Boston-Ortho Tri-Brown-3x6"},
+  {product:"Xyra",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-TR-3",desc:"Xyra Ortho Tri-Black-3x6"},
+  {product:"Spacio",size:null,fcolor:"Black",wood:null,mattress:"Metal",clothcolor:"Frosty White",sku:"HT-SPC-5LY-B-FW",desc:"Spacio Black-Frosty White"},
+  {product:"Spacio",size:null,fcolor:"Black",wood:null,mattress:"Metal",clothcolor:"Walnut",sku:"HT-SPC-5LY-B-AO",desc:"Spacio Black-Walnut"},
+  {product:"Samos",size:"6x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-HB-6",desc:"Samos Metal-Black-6x6.25"},
+  {product:"Samos",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-HB-5",desc:"Samos Metal-Black-5x6.25"},
+  {product:"Samos",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-HB-4",desc:"Samos Metal-Black-4x6.25"},
+  {product:"Samos",size:"6x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HB-6",desc:"Samos Double Layer-Black-6x6.25"},
+  {product:"Samos",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HB-5",desc:"Samos Double Layer-Black-5x6.25"},
+  {product:"Samos",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HB-4",desc:"Samos Double Layer-Black-4x6.25"},
+  {product:"Rollease",size:"3x6",fcolor:"Grey",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-GR-RE-3",desc:"Rollease Ortho Tri-Grey-3x6"},
+  {product:"Oslo",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-OS-5",desc:"Oslo Metal-Black-5x6.25"},
+  {product:"Oslo",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-OS-4",desc:"Oslo Metal-Black-4x6.25"},
+  {product:"Oslo",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-OS-5",desc:"Oslo Double Layer-Black-5x6.25"},
+  {product:"Oslo",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-OS-4",desc:"Oslo Double Layer-Black-4x6.25"},
+  {product:"Nova",size:"3x6",fcolor:"White",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-W-BL-EL-3",desc:"Nova Metal-White-3x6"},
+  {product:"Nova",size:"6x6.25",fcolor:"Ivory",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-IV-BL-EL-6",desc:"Nova Metal-Ivory-6x6.25"},
+  {product:"Nova",size:"5x6.25",fcolor:"Ivory",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-IV-BL-EL-5",desc:"Nova Metal-Ivory-5x6.25"},
+  {product:"Nova",size:"4x6.25",fcolor:"Ivory",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-IV-BL-EL-4",desc:"Nova Metal-Ivory-4x6.25"},
+  {product:"Nova",size:"6x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-EL-6",desc:"Nova Metal-Black-6x6.25"},
+  {product:"Nova",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-EL-5",desc:"Nova Metal-Black-5x6.25"},
+  {product:"Nova",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-EL-4",desc:"Nova Metal-Black-4x6.25"},
+  {product:"Nova",size:"3x6",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-EL-3",desc:"Nova Metal-Black-3x6"},
+  {product:"Nova",size:"3x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-W-BL-EL-3",desc:"Nova Ortho Tri-White-3x6"},
+  {product:"Nova",size:"6x6.25",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-EL-6",desc:"Nova Ortho Tri-Black-6x6.25"},
+  {product:"Nova",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-EL-5",desc:"Nova Ortho Tri-Black-5x6.25"},
+  {product:"Nova",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-EL-4",desc:"Nova Ortho Tri-Black-4x6.25"},
+  {product:"Nova",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-EL-3",desc:"Nova Ortho Tri-Black-3x6"},
+  {product:"Nova",size:"3x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-W-BL-EL-3",desc:"Nova Double Layer-White-3x6"},
+  {product:"Nova",size:"6x6.25",fcolor:"Ivory",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-IV-BL-EL-6",desc:"Nova Double Layer-Ivory-6x6.25"},
+  {product:"Nova",size:"5x6.25",fcolor:"Ivory",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-IV-BL-EL-5",desc:"Nova Double Layer-Ivory-5x6.25"},
+  {product:"Nova",size:"4x6.25",fcolor:"Ivory",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-IV-BL-EL-4",desc:"Nova Double Layer-Ivory-4x6.25"},
+  {product:"Nova",size:"6x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-EL-6",desc:"Nova Double Layer-Black-6x6.25"},
+  {product:"Nova",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-EL-5",desc:"Nova Double Layer-Black-5x6.25"},
+  {product:"Nova",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-EL-4",desc:"Nova Double Layer-Black-4x6.25"},
+  {product:"Nova",size:"3x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-EL-3",desc:"Nova Double Layer-Black-3x6"},
+  {product:"Nova",size:"3x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-W-BL-EL-3",desc:"Nova Single Layer-White-3x6"},
+  {product:"Nova",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-B-BL-EL-3",desc:"Nova Single Layer-Black-3x6"},
+  {product:"Nexon",size:"3x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-W-BL-RX-3",desc:"Nexon Single Layer-White-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-W-BL-RX-2",desc:"Nexon Single Layer-White-2.5x6"},
+  {product:"Nexon",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-B-BL-RX- 3",desc:"Nexon Single Layer-Black-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-B-BL-RX- 2",desc:"Nexon Single Layer-Black-2.5x6"},
+  {product:"Nexon",size:"3x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-W-BL-NX-3",desc:"Nexon Double Layer-White-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-W-BL-NX-2",desc:"Nexon Double Layer-White-2.5x6"},
+  {product:"Nexon",size:"3x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-NX-3",desc:"Nexon Double Layer-Black-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-NX-2",desc:"Nexon Double Layer-Black-2.5x6"},
+  {product:"Nexon",size:"3x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-W-BL-NX-3",desc:"Nexon Ortho Tri-White-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-W-BL-NX-2",desc:"Nexon Ortho Tri-White-2.5x6"},
+  {product:"Nexon",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-NX-3",desc:"Nexon Ortho Tri-Black-3x6"},
+  {product:"Nexon",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-NX-2",desc:"Nexon Ortho Tri-Black-2.5x6"},
+  {product:"Nesto",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-NS-5",desc:"Nesto Metal-Black-5x6.25"},
+  {product:"Nesto",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-NS-4",desc:"Nesto Metal-Black-4x6.25"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-FW3-5",desc:"Luvo Metal-Wenge Black-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-FW2-5",desc:"Luvo Metal-Stone Grain-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-FW1-5",desc:"Luvo Metal-American Oak-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-FW3-5",desc:"Luvo Ortho Tri-Wenge Black-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-FW2-5",desc:"Luvo Ortho Tri-Stone Grain-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-FW1-5",desc:"Luvo Ortho Tri-American Oak-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-FW3-5",desc:"Luvo Double Layer-Wenge Black-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-FW2-5",desc:"Luvo Double Layer-Stone Grain-5x6.5"},
+  {product:"Luvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-FW1-5",desc:"Luvo Double Layer-American Oak-5x6.5"},
+  {product:"Lizon",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"White",sku:"(4)-D-W-WH-LZ",desc:"Lizon White Frame-White Top"},
+  {product:"Lizon",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"Natural Ash",sku:"(4)-D-W-NH-LZ",desc:"Lizon White Frame-Natural Ash Top"},
+  {product:"Lizon",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"Grey",sku:"(4)-D-W-GR-LZ",desc:"Lizon White Frame-Grey Top"},
+  {product:"Lizon",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"American Oak",sku:"(4)-D-W-AO-LZ",desc:"Lizon White Frame-American Oak Top"},
+  {product:"Lizon",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"White",sku:"(4)-D-B-WH-LZ",desc:"Lizon Black Frame-White Top"},
+  {product:"Lizon",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"Natural Ash",sku:"(4)-D-B-NH-LZ",desc:"Lizon Black Frame-Natural Ash Top"},
+  {product:"Lizon",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"Grey",sku:"(4)-D-B-GR-LZ",desc:"Lizon Black Frame-Grey Top"},
+  {product:"Lizon",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"American Oak",sku:"(4)-D-B-AO-LZ",desc:"Lizon Black Frame-American Oak Top"},
+  {product:"Linea Grey",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-LG-5",desc:"Linea Grey Metal-Black-5x6.25"},
+  {product:"Jasper",size:"3x6",fcolor:"White",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-W-BL-HB-3",desc:"Jasper Metal-White-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-HB-3",desc:"Jasper Metal-Black-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-W-BL-HB-3",desc:"Jasper Ortho Tri-White-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-HB-3",desc:"Jasper Ortho Tri-Black-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-W-BL-HB-3",desc:"Jasper Double Layer-White-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HB-3",desc:"Jasper Double Layer-Black-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-W-BL-HB-3",desc:"Jasper Single Layer-White-3x6"},
+  {product:"Jasper",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:null,sku:"L1-B-BL-HB-3",desc:"Jasper Single Layer-Black-3x6"},
+  {product:"Eva",size:null,fcolor:"Black",wood:null,mattress:"Study Chair",clothcolor:"SC",sku:"SB-SC-BL-B",desc:"Eva Study Chair-Black"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-M3-5",desc:"Elvo Metal-Wenge Black-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-M2-5",desc:"Elvo Metal-Stone Grain-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Metal",clothcolor:null,sku:"ME-B-BL-M1-5",desc:"Elvo Metal-American Oak-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-HW3-5",desc:"Elvo Ortho Tri-Wenge Black-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-HW2-5",desc:"Elvo Ortho Tri-Stone Grain-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-HW1-5",desc:"Elvo Ortho Tri-American Oak-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Wenge Black",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HW3-5",desc:"Elvo Double Layer-Wenge Black-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"Stone Grain",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HW2-5",desc:"Elvo Double Layer-Stone Grain-5x6.5"},
+  {product:"Elvo",size:"5x6.5",fcolor:"Black",wood:"American Oak",mattress:"Double Layer",clothcolor:null,sku:"L2-B-BL-HW1-5",desc:"Elvo Double Layer-American Oak-5x6.5"},
+  {product:"Duke",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"White",sku:"(4)-D-W-WH-DU",desc:"Duke White Frame-White Top"},
+  {product:"Duke",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"Natural Ash",sku:"(4)-D-W-NH-DU",desc:"Duke White Frame-Natural Ash Top"},
+  {product:"Duke",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"Grey",sku:"(4)-D-W-GR-DU",desc:"Duke White Frame-Grey Top"},
+  {product:"Duke",size:"4ft",fcolor:"White",wood:null,mattress:"Table",clothcolor:"American Oak",sku:"(4)-D-W-AO-DU",desc:"Duke White Frame-American Oak Top"},
+  {product:"Duke",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"White",sku:"(4)-D-B-WH-DU",desc:"Duke Black Frame-White Top"},
+  {product:"Duke",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"Natural Ash",sku:"(4)-D-B-NH-DU",desc:"Duke Black Frame-Natural Ash Top"},
+  {product:"Duke",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"Grey",sku:"(4)-D-B-GR-DU",desc:"Duke Black Frame-Grey Top"},
+  {product:"Duke",size:"4ft",fcolor:"Black",wood:null,mattress:"Table",clothcolor:"American Oak",sku:"(4)-D-B-AO-DU",desc:"Duke Black Frame-American Oak Top"},
+  {product:"Boston",size:"6x6.25",fcolor:"Golden",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-G-BL-CS-6",desc:"Boston Metal-Golden-6x6.25"},
+  {product:"Boston",size:"5x6.25",fcolor:"Golden",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-G-BL-CS-5",desc:"Boston Metal-Golden-5x6.25"},
+  {product:"Boston",size:"4x6.25",fcolor:"Golden",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-G-BL-CS-4",desc:"Boston Metal-Golden-4x6.25"},
+  {product:"Boston",size:"6x6.25",fcolor:"Golden",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-G-BL-CS-6",desc:"Boston Ortho Tri-Golden-6x6.25"},
+  {product:"Boston",size:"5x6.25",fcolor:"Golden",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-G-BL-CS-5",desc:"Boston Ortho Tri-Golden-5x6.25"},
+  {product:"Boston",size:"4x6.25",fcolor:"Golden",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-G-BL-CS-4",desc:"Boston Ortho Tri-Golden-4x6.25"},
+  {product:"Boston",size:"6x6.25",fcolor:"Golden",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-G-BL-CS-6",desc:"Boston Double Layer-Golden-6x6.25"},
+  {product:"Boston",size:"5x6.25",fcolor:"Golden",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-G-BL-CS-5",desc:"Boston Double Layer-Golden-5x6.25"},
+  {product:"Boston",size:"4x6.25",fcolor:"Golden",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-G-BL-CS-4",desc:"Boston Double Layer-Golden-4x6.25"},
+  {product:"Base",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-BL-BL-BS-5",desc:"Base Metal-Black-5x6.25"},
+  {product:"Base",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-BL-BL-BS-4",desc:"Base Metal-Black-4x6.25"},
+  {product:"Base",size:"5x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-BL-BL-BS-5",desc:"Base Double Layer-Black-5x6.25"},
+  {product:"Base",size:"4x6.25",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:null,sku:"L2-BL-BL-BS-4",desc:"Base Double Layer-Black-4x6.25"},
+  {product:"Avon",size:"3x6",fcolor:"White",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-W-BL-MB-3",desc:"Avon Metal-White-3x6"},
+  {product:"Avon",size:"2.5x6",fcolor:"White",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-W-BL-MB-2",desc:"Avon Metal-White-2.5x6"},
+  {product:"Avon",size:"3x6",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-MB-3",desc:"Avon Metal-Black-3x6"},
+  {product:"Avon",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Metal",clothcolor:null,sku:"ME-B-BL-MB-2",desc:"Avon Metal-Black-2.5x6"},
+  {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Velvet",sku:"L1-B-VV-RF-3",desc:"Aura Single Layer-Velvet-3x6"},
+  {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Blue",sku:"L1-B-BS-RF-3",desc:"Aura Single Layer-Blue-3x6"},
+  {product:"Aura",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-B-BR-GD-3",desc:"Aura Single Layer-Brown-3x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-RF-3",desc:"Atlas Ortho Tri-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:null,sku:"L3-B-BL-RF-2",desc:"Atlas Ortho Tri-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-W-BR-AT-3",desc:"Atlas Ortho Tri-Brown-White-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-W-BR-AT-2",desc:"Atlas Ortho Tri-Brown-White-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-B-BR-AT-3",desc:"Atlas Ortho Tri-Brown-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Ortho Tri",clothcolor:"Brown",sku:"L3-B-BR-AT-2",desc:"Atlas Ortho Tri-Brown-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:"Brown",sku:"L2-W-BR-RF-3",desc:"Atlas Double Layer-Brown-White-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:"Brown",sku:"L2-W-BR-RF-2",desc:"Atlas Double Layer-Brown-White-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:"Black",sku:"L2-W-BL-RF-3",desc:"Atlas Double Layer-Black-White-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Double Layer",clothcolor:"Black",sku:"L2-W-BL-RF-2",desc:"Atlas Double Layer-Black-White-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:"Brown",sku:"L2-B-BR-RF-3",desc:"Atlas Double Layer-Brown-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:"Brown",sku:"L2-B-BR-RF-2",desc:"Atlas Double Layer-Brown-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:"Black",sku:"L2-B-BL-RF-3",desc:"Atlas Double Layer-Black-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Double Layer",clothcolor:"Black",sku:"L2-B-BL-RF-2",desc:"Atlas Double Layer-Black-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-W-BR-RF-3",desc:"Atlas Single Layer-Brown-White-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-W-BR-RF-2",desc:"Atlas Single Layer-Brown-White-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:"Black",sku:"L1-W-BL-RF-3",desc:"Atlas Single Layer-Black-White-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"White",wood:null,mattress:"Single Layer",clothcolor:"Black",sku:"L1-W-BL-RF-2",desc:"Atlas Single Layer-Black-White-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-B-BR-RF-3",desc:"Atlas Single Layer-Brown-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Brown",sku:"L1-B-BR-RF-2",desc:"Atlas Single Layer-Brown-Black-2.5x6"},
+  {product:"Atlas",size:"3x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Black",sku:"L1-B-BL-RF-3",desc:"Atlas Single Layer-Black-Black-3x6"},
+  {product:"Atlas",size:"2.5x6",fcolor:"Black",wood:null,mattress:"Single Layer",clothcolor:"Black",sku:"L1-B-BL-RF-2",desc:"Atlas Single Layer-Black-Black-2.5x6"},
+];
+
+const WOOD_PRODUCTS=["Luvo","Elvo"];
+const NO_SIZE=["Spacio","Eva"];
+const TABLE_PRODUCTS=["Lizon","Duke"];
+const HAS_CLOTH_COLOR=["Lizon","Duke","Aura","Atlas"];
+const SIZE_ORDER=["2.5x6","3x6","4x6.25","4ft","5x6.25","5x6.5","6x6.25"];
+const MATTRESS_ORDER=["Metal","Single Layer","Double Layer","Ortho Tri","Table","Study Chair"];
+
+// Color swatches for frame color chips
+const FCOLOR_SWATCHES = {
+  "Black":"#1a1a1a","White":"#f0ede8","Ivory":"#f5f0e0","Golden":"#c9a227","Grey":"#6b6860","Brown":"#5c3d2e"
+};
+const WOOD_SWATCHES = {
+  "Wenge Black":"#2c1f14","Stone Grain":"#7a6b5e","American Oak":"#b5895e"
+};
+const CLOTHCOLOR_SWATCHES = {
+  "White":"#f0ede8","Grey":"#6b6860","Natural Ash":"#c8b49a","American Oak":"#b5895e",
+  "Walnut":"#5c3d2e","Frosty White":"#e8eaec","Black":"#1a1a1a",
+  "Velvet":"#6b3fa0","Blue":"#2563eb","Brown":"#5c3d2e","SC":"#333"
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let sel={product:null,size:null,fcolor:null,wood:null,mattress:null,clothcolor:null};
+let queue=[];
+let currentTab='picker';
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function unique(arr){return [...new Set(arr)].filter(Boolean)}
+function getFiltered(p){
+  return SKUS.filter(s=>{
+    if(p.product&&s.product!==p.product)return false;
+    if(p.size!==undefined&&p.size!==null&&s.size!==p.size)return false;
+    if(p.fcolor!==undefined&&p.fcolor!==null&&s.fcolor!==p.fcolor)return false;
+    if(p.wood!==undefined&&p.wood!==null&&s.wood!==p.wood)return false;
+    if(p.mattress!==undefined&&p.mattress!==null&&s.mattress!==p.mattress)return false;
+    if(p.clothcolor!==undefined&&p.clothcolor!==null&&s.clothcolor!==p.clothcolor)return false;
+    return true;
+  });
+}
+function svgDataUrl(key){
+  const svg=PROD_SVGS[key]||PROD_SVGS['default_bed'];
+  return 'data:image/svg+xml;base64,'+btoa(svg);
+}
+
+// ── PRODUCT GRID ──────────────────────────────────────────────────────────────
+function buildProductGrid(){
+  const grid=document.getElementById('product-grid');
+  const products=unique(SKUS.map(s=>s.product)).sort();
+  grid.innerHTML=products.map(p=>{
+    const meta=PRODUCTS_META[p]||{img:'',svg:'default_bed',sub:''};
+    const realSrc=IMG_BASE+meta.img;
+    const fallbackSrc=svgDataUrl(meta.svg);
+    return `<div class="product-card" onclick="selectProduct('${p}')">
+      <img class="prod-img"
+        src="${realSrc}"
+        alt="${p}"
+        onerror="this.onerror=null;this.src='${fallbackSrc}'">
+      <div class="prod-label">
+        <div class="prod-name">${p}</div>
+        <div class="prod-sub">${meta.sub}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectProduct(p){
+  sel={product:p,size:null,fcolor:null,wood:null,mattress:null,clothcolor:null};
+  document.getElementById('step-product-name').textContent=p;
+  showScreen('scr-picker');
+  renderPickerStep();
+}
+
+// ── PICKER STEP LOGIC ────────────────────────────────────────────────────────
+function getStepInfo(){
+  const hasSize=!NO_SIZE.includes(sel.product);
+  const hasWood=WOOD_PRODUCTS.includes(sel.product);
+  // Steps: [size?, fcolor, wood?, mattress, clothcolor?]
+  const steps=[];
+  if(hasSize) steps.push({key:'size',label:'Size'});
+  steps.push({key:'fcolor',label:'Frame Color'});
+  if(hasWood) steps.push({key:'wood',label:'Wood Pattern'});
+  steps.push({key:'mattress',label:TABLE_PRODUCTS.includes(sel.product)?'Type':'Mattress'});
+  // clothcolor added dynamically
+  return steps;
+}
+
+function getCurrentStep(){
+  const steps=getStepInfo();
+  for(let i=0;i<steps.length;i++){
+    if(sel[steps[i].key]===null||sel[steps[i].key]===undefined) return steps[i].key;
+  }
+  // Check cloth color
+  const partial={product:sel.product,size:sel.size,fcolor:sel.fcolor,wood:sel.wood,mattress:sel.mattress};
+  const clothcolors=unique(getFiltered(partial).map(s=>s.clothcolor).filter(v=>v!==null&&v!==undefined));
+  if(clothcolors.length>0&&(sel.clothcolor===null||sel.clothcolor===undefined)) return 'clothcolor';
+  return 'done';
+}
+
+function renderPickerStep(){
+  const step=getCurrentStep();
+  const allSteps=getStepInfo();
+  // Add clothcolor step if needed
+  const partial5={product:sel.product,size:sel.size,fcolor:sel.fcolor,wood:sel.wood,mattress:sel.mattress};
+  const possibleCloth=unique(getFiltered(partial5).map(s=>s.clothcolor).filter(Boolean));
+  const totalSteps=allSteps.length+(possibleCloth.length>0?1:0);
+  
+  // Progress bar — count completed
+  let done=0;
+  allSteps.forEach(s=>{if(sel[s.key]!==null&&sel[s.key]!==undefined)done++;});
+  if(possibleCloth.length>0&&sel.clothcolor!==null&&sel.clothcolor!==undefined)done++;
+  const pb=document.getElementById('progress-bar');
+  pb.innerHTML=Array.from({length:totalSteps},(_,i)=>
+    `<div class="prog-dot${i<done?' done':''}"></div>`).join('');
+
+  // Crumb
+  const parts=[sel.size,sel.fcolor,sel.wood,sel.mattress,sel.clothcolor].filter(Boolean);
+  document.getElementById('step-crumb').textContent=parts.join(' · ')||'Pick options below';
+
+  const content=document.getElementById('picker-content');
+  
+  if(step==='done'){
+    renderSKUResult(content);
+    return;
+  }
+
+  let html='';
+  if(step==='size'){
+    const sizes=unique(getFiltered({product:sel.product}).map(s=>s.size).filter(Boolean))
+      .sort((a,b)=>(SIZE_ORDER.indexOf(a)<0?99:SIZE_ORDER.indexOf(a))-(SIZE_ORDER.indexOf(b)<0?99:SIZE_ORDER.indexOf(b)));
+    html=`<div class="sec-label">Select Size</div><div class="chip-row">${
+      sizes.map(v=>`<div class="chip" onclick="pickVal('size','${v}')">${v}</div>`).join('')
+    }</div>`;
+  } else if(step==='fcolor'){
+    const fcolors=unique(getFiltered({product:sel.product,size:sel.size}).map(s=>s.fcolor).filter(Boolean));
+    html=`<div class="sec-label">Frame Color</div><div class="img-picker">${
+      fcolors.map(v=>{
+        const sw=FCOLOR_SWATCHES[v]||'#4a4845';
+        return `<div class="img-option" onclick="pickVal('fcolor','${v}')">
+          <div class="opt-img" style="background:${sw};align-items:flex-end;padding-bottom:8px">
+            <span style="font-size:11px;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.7);letter-spacing:0.04em;padding:0 8px">${v}</span>
+          </div>
+          <div class="opt-label">${v}</div>
+        </div>`;
+      }).join('')
+    }</div>`;
+  } else if(step==='wood'){
+    const woods=unique(getFiltered({product:sel.product,size:sel.size,fcolor:sel.fcolor}).map(s=>s.wood).filter(Boolean));
+    html=`<div class="sec-label">Wood Pattern</div><div class="img-picker">${
+      woods.map(v=>{
+        const sw=WOOD_SWATCHES[v]||'#5c3d2e';
+        return `<div class="img-option" onclick="pickVal('wood','${v}')">
+          <div class="opt-img" style="background:linear-gradient(135deg,${sw} 0%,${sw}cc 100%);align-items:flex-end;padding-bottom:8px">
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.7);padding:0 8px">${v}</span>
+          </div>
+          <div class="opt-label">${v}</div>
+        </div>`;
+      }).join('')
+    }</div>`;
+  } else if(step==='mattress'){
+    const p6={product:sel.product,size:sel.size,fcolor:sel.fcolor,wood:sel.wood};
+    const mattresses=unique(getFiltered(p6).map(s=>s.mattress).filter(Boolean))
+      .sort((a,b)=>(MATTRESS_ORDER.indexOf(a)<0?99:MATTRESS_ORDER.indexOf(a))-(MATTRESS_ORDER.indexOf(b)<0?99:MATTRESS_ORDER.indexOf(b)));
+    // Mattress icons
+    const MATTRESS_ICONS={'Metal':'🔩','Single Layer':'▬','Double Layer':'▬▬','Ortho Tri':'▬▬▬','Table':'🪵','Study Chair':'🪑'};
+    html=`<div class="sec-label">${TABLE_PRODUCTS.includes(sel.product)?'Type':'Mattress Type'}</div>
+    <div class="chip-row">${mattresses.map(v=>
+      `<div class="chip" onclick="pickVal('mattress','${v.replace(/'/g,"\\'")}')">
+        <span style="margin-right:6px">${MATTRESS_ICONS[v]||'◼'}</span>${v}
+      </div>`).join('')
+    }</div>`;
+  } else if(step==='clothcolor'){
+    const clothcolors=unique(getFiltered(partial5).map(s=>s.clothcolor).filter(Boolean));
+    const lbl=TABLE_PRODUCTS.includes(sel.product)?'Top Color':'Mattress Color';
+    html=`<div class="sec-label">${lbl}</div><div class="img-picker">${
+      clothcolors.map(v=>{
+        const sw=CLOTHCOLOR_SWATCHES[v]||'#4a4845';
+        return `<div class="img-option" onclick="pickVal('clothcolor','${v}')">
+          <div class="opt-img" style="background:${sw};align-items:flex-end;padding-bottom:8px">
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.7);padding:0 8px">${v}</span>
+          </div>
+          <div class="opt-label">${v}</div>
+        </div>`;
+      }).join('')
+    }</div>`;
+  }
+  content.innerHTML=html;
+}
+
+function pickVal(key,val){
+  sel[key]=val;
+  // Reset downstream
+  const order=['size','fcolor','wood','mattress','clothcolor'];
+  const idx=order.indexOf(key);
+  order.slice(idx+1).forEach(k=>sel[k]=null);
+  renderPickerStep();
+}
+
+function renderSKUResult(content){
+  const match=SKUS.find(s=>
+    s.product===sel.product&&
+    (s.size===sel.size||(NO_SIZE.includes(sel.product)&&true))&&
+    s.fcolor===sel.fcolor&&
+    s.wood===sel.wood&&
+    s.mattress===sel.mattress&&
+    s.clothcolor===sel.clothcolor
+  );
+  if(match){
+    content.innerHTML=`
+      <div class="sku-card found">
+        <div class="sku-lbl found">✓ Master SKU Found</div>
+        <div class="sku-val">${match.sku}</div>
+        <div class="sku-desc">${match.desc}</div>
+      </div>
+      <div class="qty-row">
+        <div class="qty-wrap">
+          <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+          <input class="qty-num" type="number" id="qty-input" value="1" min="1">
+          <button class="qty-btn" onclick="adjustQty(1)">+</button>
+        </div>
+        <button class="add-btn" onclick="addToQueue('${match.sku}','${match.desc.replace(/'/g,"\\'")}')">
+          + Add to Queue
+        </button>
+      </div>`;
+  } else {
+    content.innerHTML=`<div class="sku-card notfound">
+      <div class="sku-lbl notfound">No SKU found</div>
+      <div style="font-size:13px;color:#a09d98;margin-top:4px">No matching SKU for this combination. Please check your selections.</div>
+    </div>`;
+  }
+}
+
+function adjustQty(d){
+  const inp=document.getElementById('qty-input');
+  if(!inp)return;
+  inp.value=Math.max(1,(parseInt(inp.value)||1)+d);
+}
+
+// ── QUEUE ─────────────────────────────────────────────────────────────────────
+function addToQueue(sku,desc){
+  const qty=parseInt(document.getElementById('qty-input')?.value)||1;
+  const existing=queue.find(q=>q.sku===sku);
+  if(existing){existing.qty+=qty;showToast(`+${qty} → ${sku}`);}
+  else{queue.push({sku,desc,qty,product:sel.product});showToast(`Added ${sku} ×${qty}`);}
+  updateBadge();
+  // reset qty
+  const inp=document.getElementById('qty-input');
+  if(inp)inp.value=1;
+}
+
+function updateBadge(){
+  const total=queue.reduce((s,q)=>s+(q.qty||1),0);
+  document.getElementById('hdr-badge').textContent=
+    queue.length===0?'0 queued':`${queue.length} SKU · ${total} pcs`;
+}
+
+function renderQueueScreen(){
+  const total=queue.reduce((s,q)=>s+(parseInt(q.qty)||1),0);
+  const prods=new Set(queue.map(q=>q.product)).size;
+  document.getElementById('s-skus').textContent=queue.length;
+  document.getElementById('s-pcs').textContent=total;
+  document.getElementById('s-prods').textContent=prods;
+  const list=document.getElementById('queue-list');
+  if(queue.length===0){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div>Queue is empty.<br>Pick SKUs from the Picker tab.</div>`;
+    return;
+  }
+  list.innerHTML=queue.map((q,i)=>`
+    <div class="q-item">
+      <div class="q-item-top">
+        <div>
+          <div class="q-sku">${q.sku}</div>
+          <div class="q-desc">${q.desc}</div>
+        </div>
+        <div class="q-del" onclick="removeItem(${i})">✕</div>
+      </div>
+      <div class="q-bottom">
+        <div class="q-product-tag">${q.product}</div>
+        <div class="q-qty-wrap">
+          <button class="q-qty-btn" onclick="adjustItemQty(${i},-1)">−</button>
+          <input class="q-qty-num" type="number" value="${q.qty}" min="1"
+            onchange="setItemQty(${i},this.value)" oninput="setItemQty(${i},this.value)">
+          <button class="q-qty-btn" onclick="adjustItemQty(${i},1)">+</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function removeItem(i){queue.splice(i,1);renderQueueScreen();updateBadge();}
+function adjustItemQty(i,d){queue[i].qty=Math.max(1,(queue[i].qty||1)+d);renderQueueScreen();updateBadge();}
+function setItemQty(i,v){queue[i].qty=Math.max(1,parseInt(v)||1);updateBadge();}
+function clearQueue(){if(!queue.length)return;queue=[];renderQueueScreen();updateBadge();showToast('Queue cleared');}
+
+function exportCSV(){
+  if(!queue.length){showToast('Queue is empty');return;}
+  const rows=['Master SKU,Quantity,Description'];
+  queue.forEach(q=>rows.push(`"${q.sku}",${q.qty},"${q.desc}"`));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  const ds=d.getFullYear()+''+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
+  a.href=url;a.download=`barcodes_${ds}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${queue.length} SKUs`);
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('nav-picker').classList.toggle('active',tab==='picker');
+  document.getElementById('nav-queue').classList.toggle('active',tab==='queue');
+  if(tab==='picker'){
+    if(sel.product) showScreen('scr-picker');
+    else showScreen('scr-product');
+  } else {
+    renderQueueScreen();
+    showScreen('scr-queue');
+  }
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector('.main').scrollTop=0;
+}
+
+function goBack(){
+  // walk back one step
+  const order=['clothcolor','mattress','wood','fcolor','size'];
+  for(const key of order){
+    if(sel[key]!==null&&sel[key]!==undefined){sel[key]=null;break;}
+  }
+  // if all null, go back to product screen
+  const anySet=['size','fcolor','wood','mattress','clothcolor'].some(k=>sel[k]!==null&&sel[k]!==undefined);
+  if(!anySet){sel.product=null;showScreen('scr-product');return;}
+  renderPickerStep();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildProductGrid();
+</script>
+</body>
+</html>
